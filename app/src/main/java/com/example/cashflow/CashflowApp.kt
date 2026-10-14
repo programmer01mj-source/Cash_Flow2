@@ -1,7 +1,6 @@
 package com.example.cashflow
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.input.key.Key.Companion.Home
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -31,13 +30,11 @@ fun CashflowApp(){
             )
         }
         composable (Routes.HOME){
-            Home(
-                onLogout= {
-                    navController.navigate(Routes.LOGIN){
-                        popUpTo(Routes.HOME){inclusive= true}
-                    }
+            Home {
+                navController.navigate(Routes.LOGIN) {
+                    popUpTo(Routes.HOME) { inclusive = true }
                 }
-            )
+            }
         }
 
     }
