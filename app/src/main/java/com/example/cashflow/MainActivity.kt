@@ -1,7 +1,6 @@
 package com.example.cashflow
 
 import android.content.res.Configuration
-import android.media.Image
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -51,14 +50,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cashflow.ui.theme.CashflowTheme
 
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             CashflowTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    CashflowApp()
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        CashflowApp()
+                    }
                 }
             }
         }
@@ -124,9 +128,12 @@ onLoginSuccess: ()-> Unit={}
         contentAlignment = Alignment.Center) {
         Spacer(modifier = Modifier.height(15.dp))
         Button(
-            onClick = { println("Login clicked") },
-            modifier = Modifier.size(width = 200.dp, height = 45.dp).fillMaxSize(),
-    onLoginSuccess()) {
+            onClick = {
+                println("Login clicked")
+                onLoginSuccess()
+            },
+            modifier = Modifier.size(width = 200.dp, height = 45.dp).fillMaxSize()
+        ) {
             Text(text = "Login")
         }
     }

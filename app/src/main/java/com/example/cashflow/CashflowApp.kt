@@ -5,16 +5,27 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.cashflow.navigation.Routes
-import com.example.cashflow.screens.Signup
 import com.example.cashflow.screens.Home
+import com.example.cashflow.screens.Signup
+import com.example.cashflow.screens.SplashScreen
+
 @Composable
 fun CashflowApp(){
     val navController = rememberNavController()
 
     NavHost(
         navController = navController,
-        startDestination =Routes.LOGIN
+        startDestination = Routes.SPLASH
     ) {
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onSplashFinished = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Routes.LOGIN) {
             Login(
                 onNavigateToSignup = {

@@ -98,12 +98,15 @@ fun Signup(
             ) {
                 Column(verticalArrangement = Arrangement.Center) {
                     Button(
-                        onClick = { println("Sign up") },
+                        onClick = {
+                            println("Sign up")
+                            onSignupSuccess()
+                        },
                         modifier = Modifier.size(width = 210.dp, height = 45.dp).fillMaxSize(),
-                        shape = RoundedCornerShape(22.dp),
-                        onSignupSuccess()
-                    )
-                    { Text(text = "Sign Up") }
+                        shape = RoundedCornerShape(22.dp)
+                    ) {
+                        Text(text = "Sign Up")
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
 
                     TextButton(onClick = onNavigateToLogin) {
