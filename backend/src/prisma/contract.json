@@ -4,8 +4,12 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
-    "Post": {
-      "model": "Post",
+    "Loan": {
+      "model": "Loan",
+      "namespace": "public"
+    },
+    "Transaction": {
+      "model": "Transaction",
       "namespace": "public"
     },
     "User": {
@@ -16,13 +20,86 @@
   "domain": {
     "namespaces": {
       "public": {
+        "enum": {
+          "Role": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "Customer",
+                "value": "Customer"
+              },
+              {
+                "name": "Officer",
+                "value": "Officer"
+              },
+              {
+                "name": "Admin",
+                "value": "Admin"
+              }
+            ]
+          },
+          "State": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "Active",
+                "value": "Active"
+              },
+              {
+                "name": "Blacklisted",
+                "value": "Blacklisted"
+              }
+            ]
+          },
+          "TransactionMode": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "Cash",
+                "value": "Cash"
+              },
+              {
+                "name": "Banktransfer",
+                "value": "Banktransfer"
+              },
+              {
+                "name": "Tnm_Mpamba",
+                "value": "Tnm_Mpamba"
+              },
+              {
+                "name": "Airtel_money",
+                "value": "Airtel_money"
+              }
+            ]
+          },
+          "TransactionType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "Offer",
+                "value": "Offer"
+              },
+              {
+                "name": "Payback",
+                "value": "Payback"
+              }
+            ]
+          }
+        },
         "models": {
-          "Post": {
+          "Loan": {
             "fields": {
+              "amount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
               "authorId": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/int4@1",
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -43,7 +120,7 @@
               "id": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/int4@1",
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -78,10 +155,28 @@
                   "model": "User",
                   "namespace": "public"
                 }
+              },
+              "transactions": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "loanId"
+                  ]
+                },
+                "to": {
+                  "model": "Transaction",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
               "fields": {
+                "amount": {
+                  "column": "amount"
+                },
                 "authorId": {
                   "column": "authorId"
                 },
@@ -102,7 +197,117 @@
                 }
               },
               "namespaceId": "public",
-              "table": "Post"
+              "table": "Loan"
+            }
+          },
+          "Transaction": {
+            "fields": {
+              "TransactionType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "TransactionType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "amount": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "loanId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "transactionMode": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "TransactionMode",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "loan": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "loanId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Loan",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "TransactionType": {
+                  "column": "TransactionType"
+                },
+                "amount": {
+                  "column": "amount"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "loanId": {
+                  "column": "loanId"
+                },
+                "transactionMode": {
+                  "column": "transactionMode"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "Transaction"
             }
           },
           "User": {
@@ -124,15 +329,41 @@
               "id": {
                 "nullable": false,
                 "type": {
-                  "codecId": "pg/int4@1",
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
               "name": {
-                "nullable": true,
+                "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
+                }
+              },
+              "role": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "Role",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "state": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "State",
+                  "namespaceId": "public",
+                  "plane": "domain"
                 }
               },
               "updatedAt": {
@@ -151,7 +382,7 @@
               }
             },
             "relations": {
-              "posts": {
+              "loans": {
                 "cardinality": "1:N",
                 "on": {
                   "localFields": [
@@ -162,7 +393,7 @@
                   ]
                 },
                 "to": {
-                  "model": "Post",
+                  "model": "Loan",
                   "namespace": "public"
                 }
               }
@@ -180,6 +411,12 @@
                 },
                 "name": {
                   "column": "name"
+                },
+                "role": {
+                  "column": "role"
+                },
+                "state": {
+                  "column": "state"
                 },
                 "updatedAt": {
                   "column": "updatedAt"
@@ -201,11 +438,16 @@
       "public": {
         "entries": {
           "table": {
-            "Post": {
+            "Loan": {
               "columns": {
+                "amount": {
+                  "codecId": "pg/float8@1",
+                  "dataType": "pg/float8",
+                  "nullable": false
+                },
                 "authorId": {
-                  "codecId": "pg/int4@1",
-                  "dataType": "pg/int4",
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
                   "nullable": false
                 },
                 "content": {
@@ -223,12 +465,8 @@
                   "nullable": false
                 },
                 "id": {
-                  "codecId": "pg/int4@1",
-                  "dataType": "pg/int4",
-                  "default": {
-                    "expression": "autoincrement()",
-                    "kind": "function"
-                  },
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
                   "nullable": false
                 },
                 "title": {
@@ -245,14 +483,14 @@
               "foreignKeys": [
                 {
                   "index": {
-                    "name": "Post_authorId_idx_e47547ed"
+                    "name": "Loan_authorId_idx_e47547ed"
                   },
                   "source": {
                     "columns": [
                       "authorId"
                     ],
                     "namespaceId": "public",
-                    "tableName": "Post"
+                    "tableName": "Loan"
                   },
                   "target": {
                     "columns": [
@@ -268,8 +506,120 @@
                   "columns": [
                     "authorId"
                   ],
-                  "name": "Post_authorId_idx_e47547ed",
-                  "prefix": "Post_authorId_idx",
+                  "name": "Loan_authorId_idx_e47547ed",
+                  "prefix": "Loan_authorId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "Transaction": {
+              "checks": [
+                {
+                  "expression": "\"TransactionType\" IN ('Offer', 'Payback')",
+                  "name": "Transaction_TransactionType_check_4386e8dc",
+                  "prefix": "Transaction_TransactionType_check"
+                },
+                {
+                  "expression": "\"transactionMode\" IN ('Cash', 'Banktransfer', 'Tnm_Mpamba', 'Airtel_money')",
+                  "name": "Transaction_transactionMode_check_05795bb1",
+                  "prefix": "Transaction_transactionMode_check"
+                }
+              ],
+              "columns": {
+                "TransactionType": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "Offer"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "TransactionType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "amount": {
+                  "codecId": "pg/float8@1",
+                  "dataType": "pg/float8",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "loanId": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "nullable": false
+                },
+                "transactionMode": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "Cash"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "TransactionMode",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "dataType": "pg/timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "index": {
+                    "name": "Transaction_loanId_idx_d4eddfc5"
+                  },
+                  "source": {
+                    "columns": [
+                      "loanId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Transaction"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "Loan"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "loanId"
+                  ],
+                  "name": "Transaction_loanId_idx_d4eddfc5",
+                  "prefix": "Transaction_loanId_idx",
                   "unique": false
                 }
               ],
@@ -281,6 +631,18 @@
               "uniques": []
             },
             "User": {
+              "checks": [
+                {
+                  "expression": "\"role\" IN ('Customer', 'Officer', 'Admin')",
+                  "name": "User_role_check_95d382a9",
+                  "prefix": "User_role_check"
+                },
+                {
+                  "expression": "\"state\" IN ('Active', 'Blacklisted')",
+                  "name": "User_state_check_580c9e9f",
+                  "prefix": "User_state_check"
+                }
+              ],
               "columns": {
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -297,18 +659,44 @@
                   "nullable": false
                 },
                 "id": {
-                  "codecId": "pg/int4@1",
-                  "dataType": "pg/int4",
-                  "default": {
-                    "expression": "autoincrement()",
-                    "kind": "function"
-                  },
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
                   "nullable": false
                 },
                 "name": {
                   "codecId": "pg/text@1",
                   "dataType": "pg/text",
-                  "nullable": true
+                  "nullable": false
+                },
+                "role": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "Customer"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "Role",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "state": {
+                  "codecId": "pg/text@1",
+                  "dataType": "pg/text",
+                  "default": {
+                    "kind": "literal",
+                    "value": "Active"
+                  },
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "State",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
                 },
                 "updatedAt": {
                   "codecId": "pg/timestamptz-string@1",
@@ -336,18 +724,62 @@
                 }
               ]
             }
+          },
+          "valueSet": {
+            "Role": {
+              "kind": "valueSet",
+              "values": [
+                "Customer",
+                "Officer",
+                "Admin"
+              ]
+            },
+            "State": {
+              "kind": "valueSet",
+              "values": [
+                "Active",
+                "Blacklisted"
+              ]
+            },
+            "TransactionMode": {
+              "kind": "valueSet",
+              "values": [
+                "Cash",
+                "Banktransfer",
+                "Tnm_Mpamba",
+                "Airtel_money"
+              ]
+            },
+            "TransactionType": {
+              "kind": "valueSet",
+              "values": [
+                "Offer",
+                "Payback"
+              ]
+            }
           }
         },
         "id": "public",
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a51b4833fdaffe730572670ccc27dd89af7e0726ab3de7f428d21702d687cc15"
+    "storageHash": "84172394b1d62add9fcf11861bc99f257036d289a8cfc4a47fcdc26e68448d31"
   },
   "execution": {
-    "executionHash": "4e88564095b5e0ba7904ffdba3c563ef916d87688c8c483c67055f71a9194f0f",
+    "executionHash": "8935a02bf899fdb10d0ce6c93a1aa3c944e2e88ba714fe46180a4e90e8d9369f",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "Loan",
+            "field": "id",
+            "namespace": "public"
+          }
+        },
         {
           "onCreate": {
             "id": "timestampNow",
@@ -358,8 +790,45 @@
             "kind": "generator"
           },
           "ref": {
-            "entry": "Post",
+            "entry": "Loan",
             "field": "updatedAt",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "Transaction",
+            "field": "id",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "Transaction",
+            "field": "updatedAt",
+            "namespace": "public"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "entry": "User",
+            "field": "id",
             "namespace": "public"
           }
         },

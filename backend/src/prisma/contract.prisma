@@ -50,7 +50,7 @@ model Transaction{
   id       String      @id @default(uuid())
   amount    Float
   loan      Loan     @relation(fields: [loanId], references: [id])
-  loanId    Int
+  loanId    String
   transactionMode TransactionMode @default(Cash)
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext traffic for local development (localhost, emulator, and local network IP) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <!-- TODO: Replace 192.168.1.15 with your computer's actual IPv4 address -->
+        <domain includeSubdomains="true">192.168.164.97</domain>
+    </domain-config>
+</network-security-config>

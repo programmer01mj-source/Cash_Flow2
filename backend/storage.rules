@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isLoanOfficer() {
+      return request.auth.token.role == 'Loan Officer' || request.auth.token.role == 'Admin';
+    }
+
+    match /users/{userId}/documents/{allPaths=**} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isLoanOfficer());
+      allow write: if isAuthenticated() && isOwner(userId) &&
+        request.resource.size < 10 * 1024 * 1024 && // Max 10MB
+        request.resource.contentType.matches('image/.*|application/pdf');
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+  }
+}
