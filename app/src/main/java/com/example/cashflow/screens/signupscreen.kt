@@ -21,8 +21,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cashflow.UserSession
-import com.example.cashflow.network.ApiClient
-import com.example.cashflow.network.AuthRequest
+import com.example.cashflow.data.auth.FirebaseAuthManager
 import com.example.cashflow.ui.theme.CashflowTheme
 import kotlinx.coroutines.launch
 
@@ -124,26 +123,23 @@ fun Signup(
                 } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                     errorMessage = "Please enter a valid email address."
                 } else if (password.length < 6) {
-                    errorMessage = "Password must be at least 6 characters."
+                    errorMessage = "Password must be at least 6 characters long."
                 } else {
                     errorMessage = ""
                     isLoading = true
                     scope.launch {
-                        try {
-                            val response = ApiClient.apiService.signup(AuthRequest(fullname, email, password, null))
-                            isLoading = false
+                        val authManager = FirebaseAuthManager()
+                        val role = if (email.equals("admin@qmail.com", true)) "Admin" else if (email.equals("officer@gmail.com", true)) "Loan Officer" else if (email.contains("admin", true)) "Admin" else if (email.contains("officer", true)) "Loan Officer" else "Customer"
+                        val result = authManager.signUpWithEmail(fullname, email, password, phone, role)
+                        isLoading = false
+                        if (result.isSuccess) {
                             UserSession.name = fullname
                             UserSession.email = email
                             UserSession.phone = phone
-                            UserSession.role = if (email.contains("admin", true)) "Admin" else if (email.contains("officer", true)) "Loan Officer" else "Customer"
+                            UserSession.role = role
                             showSuccessDialog = true
-                        } catch (e: Exception) {
-                            isLoading = false
-                            UserSession.name = fullname
-                            UserSession.email = email
-                            UserSession.phone = phone
-                            UserSession.role = "Customer"
-                            showSuccessDialog = true
+                        } else {
+                            errorMessage = result.exceptionOrNull()?.localizedMessage ?: "Registration failed. Please try again."
                         }
                     }
                 }
@@ -172,7 +168,7 @@ fun Signup(
         AlertDialog(
             onDismissRequest = { showSuccessDialog = false },
             title = { Text("Registration Successful") },
-            text = { Text("Your account has been created successfully and stored in the database. Please login with your credentials.") },
+            text = { Text("Your account has been created successfully in Firebase. Please login with your credentials.") },
             confirmButton = {
                 Button(onClick = {
                     showSuccessDialog = false

@@ -35,6 +35,7 @@ import com.example.cashflow.network.AuthRequest
 import com.example.cashflow.ui.theme.CashflowTheme
 import kotlinx.coroutines.launch
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.example.cashflow.data.auth.FirebaseAuthManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,54 +146,25 @@ fun Login(
                 errorMessage = ""
                 scope.launch {
                     try {
-                        if (email.equals("admin@qmail.com", ignoreCase = true) && password == "1234@admin") {
-                            UserSession.token = "Bearer admin_token_qmail"
-                            UserSession.email = email
-                            UserSession.name = "System Admin"
-                            UserSession.role = "Admin"
-                            isLoading = false
-                            onLoginSuccess("Admin", "Bearer admin_token_qmail")
-                            return@launch
-                        }
-
-                        if (email.equals("officer@gmail.com", ignoreCase = true) && password == "1234@officer") {
-                            UserSession.token = "Bearer officer_token_gmail"
-                            UserSession.email = email
-                            UserSession.name = "Loan Officer"
-                            UserSession.role = "Loan Officer"
-                            isLoading = false
-                            onLoginSuccess("Loan Officer", "Bearer officer_token_gmail")
-                            return@launch
-                        }
-
-                        val response = ApiClient.apiService.login(AuthRequest(null, email, password, null))
+                        val authManager = FirebaseAuthManager()
+                        val result = authManager.signInWithEmail(email, password)
                         isLoading = false
-                        if (response.isSuccessful && response.body() != null) {
-                            val body = response.body()!!
-                            val token = body.token
-                            val user = body.user
-                            UserSession.token = "Bearer $token"
-                            UserSession.email = user.email
-                            UserSession.name = user.name
-                            UserSession.role = user.role
-                            onLoginSuccess(UserSession.role, "Bearer $token")
-                        } else {
-                            // Seamless local fallback for physical device testing
-                            isLoading = false
-                            UserSession.token = "Bearer local_token_${System.currentTimeMillis()}"
+                        if (result.isSuccess) {
+                            val firebaseUser = result.getOrNull()
+                            val uid = firebaseUser?.uid ?: ""
+                            val role = authManager.getUserRole(uid)
+
+                            UserSession.token = "Bearer firebase_$uid"
                             UserSession.email = email
                             UserSession.name = email.substringBefore("@").replaceFirstChar { it.uppercase() }
-                            UserSession.role = if (email.equals("admin@qmail.com", true)) "Admin" else if (email.equals("officer@gmail.com", true)) "Loan Officer" else "Customer"
-                            onLoginSuccess(UserSession.role, UserSession.token)
+                            UserSession.role = role
+                            onLoginSuccess(role, UserSession.token)
+                        } else {
+                            errorMessage = result.exceptionOrNull()?.localizedMessage ?: "No account found or incorrect password. Please sign up first."
                         }
                     } catch (e: Exception) {
-                        // Seamless offline/network timeout fallback for physical device testing
                         isLoading = false
-                        UserSession.token = "Bearer offline_token_${System.currentTimeMillis()}"
-                        UserSession.email = email
-                        UserSession.name = email.substringBefore("@").replaceFirstChar { it.uppercase() }
-                        UserSession.role = if (email.equals("admin@qmail.com", true)) "Admin" else if (email.equals("officer@gmail.com", true)) "Loan Officer" else "Customer"
-                        onLoginSuccess(UserSession.role, UserSession.token)
+                        errorMessage = "Login failed: ${e.localizedMessage ?: "Please check your connection."}"
                     }
                 }
             },

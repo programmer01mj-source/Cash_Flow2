@@ -30,7 +30,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cashflow.R
 import com.example.cashflow.UserSession
+import com.example.cashflow.data.repository.FirebaseLoanRepository
+import com.example.cashflow.data.repository.FirebaseTransactionRepository
 import com.example.cashflow.ui.theme.CashflowTheme
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -62,6 +65,7 @@ fun Home(onLogout: () -> Unit = {}) {
     }
     var selectedIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Home", "Transactions", "Profile")
+    val scope = rememberCoroutineScope()
 
     var showApplyDialog by remember { mutableStateOf(false) }
     var loanAmountInput by remember { mutableStateOf("500000") }
@@ -83,12 +87,15 @@ fun Home(onLogout: () -> Unit = {}) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     val cal = Calendar.getInstance()
     val todayStr = dateFormat.format(cal.time)
-    cal.add(Calendar.DAY_OF_MONTH, 30)
-    val due1 = dateFormat.format(cal.time)
-    cal.add(Calendar.DAY_OF_MONTH, 30)
-    val due2 = dateFormat.format(cal.time)
-    cal.add(Calendar.DAY_OF_MONTH, 30)
-    val due3 = dateFormat.format(cal.time)
+    val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    var profileName by remember { mutableStateOf(UserSession.name) }
+    var profileEmail by remember { mutableStateOf(UserSession.email) }
+    var profilePhone by remember { mutableStateOf(UserSession.phone) }
+    var profileRole by remember { mutableStateOf(UserSession.role) }
+    var profileKyc by remember { mutableStateOf("Pending Documents") }
+    var profileId by remember { mutableStateOf("") }
+    var profileDob by remember { mutableStateOf("") }
+    var profileLoading by remember { mutableStateOf(true) }
 
     val installments = remember {
         mutableStateListOf<Installment>()
@@ -98,40 +105,80 @@ fun Home(onLogout: () -> Unit = {}) {
         mutableStateListOf<PaymentRecord>()
     }
 
-    DisposableEffect(UserSession.email) {
+    DisposableEffect(currentUid, UserSession.email) {
         val firestore = FirebaseFirestore.getInstance()
+        val uid = currentUid.ifBlank { FirebaseAuth.getInstance().currentUser?.uid ?: "" }
         val email = UserSession.email
 
-        val loansListener = firestore.collection("loans")
-            .whereEqualTo("borrowerEmail", email)
-            .addSnapshotListener { snapshot, _ ->
-                if (snapshot != null) {
-                    installments.clear()
-                    var index = 1
-                    for (doc in snapshot.documents) {
-                        val amount = doc.getDouble("amount") ?: 500000.0
-                        val status = doc.getString("status") ?: "Pending"
-                        installments.add(Installment(index.toString(), "2025-05-01", "MWK ${String.format(Locale.US, "%.2f", amount / 12)}", status))
-                        index++
+        val profileListener = if (uid.isNotBlank()) {
+            firestore.collection("users").document(uid)
+                .addSnapshotListener { snapshot, _ ->
+                    if (snapshot != null && snapshot.exists()) {
+                        profileName = snapshot.getString("name") ?: UserSession.name
+                        profileEmail = snapshot.getString("email") ?: UserSession.email
+                        profilePhone = snapshot.getString("phone") ?: UserSession.phone
+                        profileRole = snapshot.getString("role") ?: UserSession.role
+                        profileKyc = snapshot.getString("kycStatus") ?: "Pending Documents"
+                        profileId = snapshot.getString("nationalId") ?: ""
+                        profileDob = snapshot.getString("dob") ?: ""
                     }
+                    profileLoading = false
                 }
-            }
+        } else {
+            profileLoading = false
+            null
+        }
 
-        val txnsListener = firestore.collection("transactions")
-            .whereEqualTo("borrowerEmail", email)
-            .addSnapshotListener { snapshot, _ ->
-                if (snapshot != null) {
-                    paymentHistory.clear()
-                    for (doc in snapshot.documents) {
-                        val amount = doc.getDouble("amount") ?: 0.0
-                        val date = doc.getString("date") ?: ""
-                        val ref = doc.getString("txnId") ?: doc.id
-                        paymentHistory.add(PaymentRecord(ref, date, "MWK ${String.format(Locale.US, "%.2f", amount)}", ref))
+        val loansQuery = if (uid.isNotBlank()) {
+            firestore.collection("loans").whereEqualTo("borrowerId", uid)
+        } else {
+            firestore.collection("loans").whereEqualTo("borrowerEmail", email)
+        }
+
+        val loansListener = loansQuery.addSnapshotListener { snapshot, _ ->
+            if (snapshot != null) {
+                installments.clear()
+                var index = 1
+                for (doc in snapshot.documents) {
+                    val amount = doc.getDouble("amount") ?: 500000.0
+                    val rawStatus = doc.getString("status") ?: "PENDING"
+                    val displayStatus = when (rawStatus.uppercase()) {
+                        "PENDING" -> "Pending Review"
+                        "UNDER_REVIEW" -> "Under Review"
+                        "APPROVED" -> "Approved"
+                        "REJECTED" -> "Rejected"
+                        "DISBURSED" -> "Disbursed"
+                        "ACTIVE" -> "Active Loan"
+                        "PAID" -> "Fully Paid"
+                        "DEFAULTED" -> "Defaulted"
+                        else -> rawStatus
                     }
+                    installments.add(Installment(index.toString(), "2025-05-01", "MWK ${String.format(Locale.US, "%.2f", amount / 12)}", displayStatus))
+                    index++
                 }
             }
+        }
+
+        val txnsQuery = if (uid.isNotBlank()) {
+            firestore.collection("transactions").whereEqualTo("borrowerId", uid)
+        } else {
+            firestore.collection("transactions").whereEqualTo("borrowerEmail", email)
+        }
+
+        val txnsListener = txnsQuery.addSnapshotListener { snapshot, _ ->
+            if (snapshot != null) {
+                paymentHistory.clear()
+                for (doc in snapshot.documents) {
+                    val amount = doc.getDouble("amount") ?: 0.0
+                    val date = doc.getString("date") ?: ""
+                    val ref = doc.getString("txnId") ?: doc.id
+                    paymentHistory.add(PaymentRecord(ref, date, "MWK ${String.format(Locale.US, "%.2f", amount)}", ref))
+                }
+            }
+        }
 
         onDispose {
+            profileListener?.remove()
             loansListener.remove()
             txnsListener.remove()
         }
@@ -229,9 +276,14 @@ fun Home(onLogout: () -> Unit = {}) {
                     )
                     2 -> CustomerProfileTab(
                         onLogOut = { showLogoutConfirmDialog = true },
-                        verificationStatus = if (idUploaded && selfieUploaded && payslipUploaded) "Verified" else "Pending Documents",
-                        scannedNationalId = scannedNationalId,
-                        userDob = userDob
+                        profileName = profileName,
+                        profileEmail = profileEmail,
+                        profilePhone = profilePhone,
+                        profileRole = profileRole,
+                        profileKyc = profileKyc,
+                        profileId = profileId.ifBlank { scannedNationalId },
+                        profileDob = profileDob.ifBlank { userDob },
+                        profileLoading = profileLoading
                     )
                 }
             }
@@ -338,7 +390,17 @@ fun Home(onLogout: () -> Unit = {}) {
             },
             confirmButton = {
                 Button(
-                    onClick = { showApplyDialog = false },
+                    onClick = {
+                        val amountVal = loanAmountInput.toDoubleOrNull() ?: 500000.0
+                        val tenureVal = tenureInput.toIntOrNull() ?: 12
+                        scope.launch {
+                            try {
+                                val loanRepo = FirebaseLoanRepository()
+                                loanRepo.applyForLoan(amountVal, tenureVal, 300000.0, scannedNationalId, userDob)
+                            } catch (_: Exception) {}
+                        }
+                        showApplyDialog = false
+                    },
                     enabled = allDocsUploaded
                 ) {
                     Text("Submit Application")
@@ -870,17 +932,15 @@ private fun CustomerTransactionsTab(
 @Composable
 private fun CustomerProfileTab(
     onLogOut: () -> Unit = {},
-    verificationStatus: String,
-    scannedNationalId: String,
-    userDob: String
+    profileName: String,
+    profileEmail: String,
+    profilePhone: String,
+    profileRole: String,
+    profileKyc: String,
+    profileId: String,
+    profileDob: String,
+    profileLoading: Boolean
 ) {
-    val activeName = if (UserSession.name.isNotBlank()) UserSession.name else "Alex Borrower"
-    val activeEmail = if (UserSession.email.isNotBlank()) UserSession.email else "alex.borrower@example.com"
-    val activeRole = if (UserSession.role.isNotBlank()) UserSession.role else "Customer"
-    val activePhone = if (UserSession.phone.isNotBlank()) UserSession.phone else "+265 99 123 4567"
-    val activeId = if (scannedNationalId.isNotBlank()) scannedNationalId else if (UserSession.nationalId.isNotBlank()) UserSession.nationalId else ""
-    val activeDob = if (userDob.isNotBlank()) userDob else if (UserSession.dob.isNotBlank()) UserSession.dob else ""
-
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -888,25 +948,27 @@ private fun CustomerProfileTab(
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Customer Profile", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Customer Profile (Live Firestore Data)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Name: $activeName")
-                    Text("Email: $activeEmail")
-                    Text("Role: $activeRole")
-                    Text("Phone: $activePhone")
-                    if (activeId.isNotBlank()) {
-                        Text("National ID: $activeId")
+                    if (profileLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Loading profile from database...", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary)
                     } else {
-                        Text("National ID: Not Scanned (QR Code Required)")
+                        Text("Name: ${profileName.ifBlank { "Not provided" }}")
+                        Text("Email: ${profileEmail.ifBlank { "Not provided" }}")
+                        Text("Role: ${profileRole.ifBlank { "Customer" }}")
+                        Text("Phone: ${profilePhone.ifBlank { "Not provided" }}")
+                        Text("National ID: ${profileId.ifBlank { "Not Scanned (QR Code Required)" }}")
+                        if (profileDob.isNotBlank()) {
+                            val age = calculateAge(profileDob)
+                            Text("Date of Birth: $profileDob (Age: $age - ${if (age >= 18) "Eligible (18+)" else "Underage"})")
+                        } else {
+                            Text("Date of Birth: Not Verified")
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("KYC Verification: $profileKyc", color = MaterialTheme.colorScheme.primary)
                     }
-                    if (activeDob.isNotBlank()) {
-                        val age = calculateAge(activeDob)
-                        Text("Date of Birth: $activeDob (Age: $age - ${if (age >= 18) "Eligible (18+)" else "Underage"})")
-                    } else {
-                        Text("Date of Birth: Not Verified")
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("KYC Verification: $verificationStatus", color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

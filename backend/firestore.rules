@@ -22,6 +22,7 @@ service cloud.firestore {
       return isAuthenticated() && (getUserRole() == 'Loan Officer' || getUserRole() == 'Admin');
     }
 
+    // 1. Users Collection
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isOwner(userId);
@@ -33,28 +34,70 @@ service cloud.firestore {
       }
     }
 
+    // 2. Loans Collection
     match /loans/{loanId} {
       allow read: if isAuthenticated() && (resource.data.borrowerId == request.auth.uid || isLoanOfficer());
-      allow create: if isAuthenticated() && request.resource.data.borrowerId == request.auth.uid;
-      allow update: if isLoanOfficer() || (isAuthenticated() && resource.data.borrowerId == request.auth.uid && resource.data.status == 'Pending');
+      allow create: if isAuthenticated() && request.resource.data.borrowerId == request.auth.uid && request.resource.data.status == 'PENDING';
+      allow update: if isLoanOfficer() || (isAuthenticated() && resource.data.borrowerId == request.auth.uid && resource.data.status == 'PENDING' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'amount']));
       allow delete: if isAdmin();
     }
 
-    match /installments/{installmentId} {
-      allow read: if isAuthenticated();
-      allow write: if isLoanOfficer();
-    }
-
+    // 3. Transactions Collection
     match /transactions/{txnId} {
       allow read: if isAuthenticated() && (resource.data.borrowerId == request.auth.uid || isLoanOfficer());
-      allow create: if isAuthenticated();
+      allow create: if isLoanOfficer();
       allow update, delete: if isAdmin();
     }
 
-    match /audit_logs/{logId} {
+    // 4. Installments Collection
+    match /installments/{installmentId} {
+      allow read: if isAuthenticated() && (resource.data.borrowerId == request.auth.uid || isLoanOfficer());
+      allow write: if isLoanOfficer();
+    }
+
+    // 5. Notifications Collection
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // 6. Blacklist Collection
+    match /blacklist/{blackId} {
+      allow read: if isLoanOfficer();
+      allow write: if isAdmin();
+    }
+
+    // 7. External Loan Checks Collection
+    match /externalLoanChecks/{checkId} {
+      allow read: if isLoanOfficer();
+      allow write: if isLoanOfficer();
+    }
+
+    // 8. Audit Logs Collection
+    match /auditLogs/{logId} {
       allow read: if isLoanOfficer();
       allow create: if isAuthenticated();
       allow update, delete: if false;
+    }
+
+    // 9. System Settings Collection
+    match /systemSettings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 10. Monthly Reports Collection
+    match /monthlyReports/{reportId} {
+      allow read: if isLoanOfficer();
+      allow write: if isAdmin();
+    }
+
+    // 11. Email Notifications Collection
+    match /emailNotifications/{notifId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false;
     }
   }
 }

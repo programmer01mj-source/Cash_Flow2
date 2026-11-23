@@ -35,14 +35,15 @@ fun CashflowApp(){
                 },
                 onLoginSuccess = { role, token ->
                     println("Authenticated successfully with token: $token")
-                    when (role) {
-                        "Loan Officer" -> {
-                            navController.navigate(Routes.LOAN_OFFICER_DASHBOARD) {
+                    val normalizedRole = role.trim().lowercase()
+                    when {
+                        normalizedRole.contains("admin") -> {
+                            navController.navigate(Routes.ADMIN_DASHBOARD) {
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                             }
                         }
-                        "Admin" -> {
-                            navController.navigate(Routes.ADMIN_DASHBOARD) {
+                        normalizedRole.contains("officer") || normalizedRole.contains("loan") -> {
+                            navController.navigate(Routes.LOAN_OFFICER_DASHBOARD) {
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                             }
                         }
